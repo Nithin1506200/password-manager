@@ -1,0 +1,41 @@
+# Use bash for multi-line recipes
+set shell := ["bash", "-cu"]
+
+# Load environment variables from .env (if exists)
+set dotenv-load := true
+
+# Default target: run all migrations
+default:
+    @just migrate
+
+# 🧱 1. Create a new Diesel migration
+# Usage: just new-migration create_users
+new-migration name:
+    @echo "🔧 Generating new migration: {{name}}"
+    diesel migration generate {{name}}
+
+# 🧩 2. Apply all pending migrations
+migrate:
+    @echo "🚀 Running all pending migrations..."
+    diesel migration run
+    @echo "✅ Migration complete!"
+
+# 🧨 3. Revert the last migration
+revert:
+    @echo "↩️  Reverting last migration..."
+    diesel migration revert
+    @echo "✅ Revert complete!"
+
+
+
+# 🧨 4. Undo all migrations (revert until none left)
+revert-all:
+    @echo "🧹 Reverting all Diesel migrations..."
+    @while diesel migration revert --quiet; do \
+        echo "↩️  Reverted one migration..."; \
+    done; \
+    echo "✅ All migrations reverted!"
+
+# 🧾 5. List migrations
+list:
+    @diesel migration list

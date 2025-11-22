@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use base64::prelude::*;
 use chacha20poly1305::{
     aead::{Aead, AeadCore, KeyInit, OsRng},
@@ -6,10 +7,9 @@ use chacha20poly1305::{
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
-use std::marker::PhantomData;
 mod test;
-// https://docs.rs/chacha20poly1305/latest/chacha20poly1305/
 
+// https://docs.rs/chacha20poly1305/latest/chacha20poly1305/
 pub fn generate_key() -> String {
     KeyStr::new().get_base64()
 }
@@ -154,21 +154,18 @@ impl<'de> Deserialize<'de> for NonceStr {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct EncryptedData<T> {
+struct EncryptedData {
     data: String,
     nonce: NonceStr,
     version: String,
     time: String,
-    // skip serialize
-    #[serde(skip)]
-    phantamdata: PhantomData<T>,
 }
 
-impl<T> EncryptedData<T>
-where
-    T: AsRef<str> + From<String>,
-{
-    pub fn encrypt(key: &str, data: T) -> Result<Self, String> {
+impl EncryptedData {
+    pub fn encrypt<T>(key: &str, data: T) -> Result<Self, String>
+    where
+        T: AsRef<str> + From<String>,
+    {
         let data = data.as_ref();
         let key = KeyStr::from_base64(key)?.peak();
         let cipher = ChaCha20Poly1305::new(&key);
@@ -182,13 +179,13 @@ where
             nonce: nonce,
             time: "".to_string(),
             version: "".to_string(),
-            phantamdata: PhantomData,
         })
     }
 
-    pub fn decrypt<F>(&self, get_key: F) -> Result<T, String>
+    pub fn decrypt<F, T>(&self, get_key: F) -> Result<T, String>
     where
         F: FnOnce(&str) -> Result<String, String>,
+        T: AsRef<str> + From<String>,
     {
         let key_str = get_key(&self.version)?;
         let key = KeyStr::from_base64(&key_str)?.peak();
@@ -213,7 +210,10 @@ mod tests {
         let data = "test data".to_string();
         let key = generate_key();
         let enc = EncryptedData::encrypt(&key, data.clone());
-        let dec = enc.as_ref().unwrap().decrypt(|_| Ok(key.to_string()));
+        let dec = enc
+            .as_ref()
+            .unwrap()
+            .decrypt::<_, String>(|_| Ok(key.to_string()));
         println!("{:?} {:?}", enc.as_ref(), dec);
         assert_eq!(dec.unwrap(), data);
     }
@@ -228,12 +228,9 @@ mod tests {
         let json = serde_json::to_string(&enc).unwrap();
         println!("Serialized JSON: {}", json);
 
-        // Verify phantamdata field is not in the JSON
-        assert!(!json.contains("phantamdata"));
-
         // Deserialize back and verify data integrity
-        let deserialized: EncryptedData<String> = serde_json::from_str(&json).unwrap();
-        let dec = deserialized.decrypt(|_| Ok(key.to_string())).unwrap();
+        let deserialized: EncryptedData = serde_json::from_str(&json).unwrap();
+        let dec: String = deserialized.decrypt(|_| Ok(key.to_string())).unwrap();
         assert_eq!(dec, data);
     }
 }
