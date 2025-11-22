@@ -1,4 +1,4 @@
-use tauri::State;
+use tauri::{AppHandle, State};
 use tauri_plugin_sql::{DbInstances, DbPool};
 
 use crate::db_models::{Profiles, DB_NAME};
@@ -17,16 +17,16 @@ where
 #[tauri::command]
 #[specta::specta]
 pub async fn create_profile(
-    // db_instances: State<'_, DbInstances>,
     name: String,
     password: String,
+    app: tauri::AppHandle,
 ) -> Result<(), String> {
-    Profiles::create_new(&name, &password).await
+    Profiles::create_new(&name, &password, app).await
 }
 #[tauri::command]
 #[specta::specta]
-pub async fn list_profile() -> Result<Vec<Profiles>, String> {
-    Profiles::list().await
+pub async fn list_profile(app: tauri::AppHandle) -> Result<Vec<Profiles>, String> {
+    Profiles::list(app).await
 }
 
 pub async fn update_profile_password(profile_id: String, password: String) -> Result<(), ()> {

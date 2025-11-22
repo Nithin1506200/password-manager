@@ -1,4 +1,5 @@
 use crate::{
+    db_models::DB_NAME,
     migrations::get_migrations,
     services::{create_profile, list_profile},
 };
@@ -25,7 +26,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(
             tauri_plugin_sql::Builder::new()
-                .add_migrations("sqlite:password_manager.db", get_migrations())
+                .add_migrations(DB_NAME, get_migrations())
                 .build(),
         )
         .plugin(tauri_plugin_opener::init())
@@ -43,7 +44,7 @@ fn specta() {
     use serde::{Deserialize, Serialize};
     use specta_typescript::Typescript;
     use tauri_specta::{collect_commands, Builder};
-    let mut builder = Builder::<tauri::Wry>::new()
+    let builder = Builder::<tauri::Wry>::new()
         // Then register them (separated by a comma)
         .commands(collect_commands![greet, create_profile, list_profile]);
 

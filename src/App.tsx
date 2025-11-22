@@ -2,6 +2,9 @@ import { useState } from "react";
 import reactLogo from "./assets/react.svg";
 import "./App.css";
 import { commands, type Profiles } from "./bindings";
+import Database from "@tauri-apps/plugin-sql";
+// when using `"withGlobalTauri": true`, you may use
+// const Database = window.__TAURI__.sql;
 
 function App() {
   const [profiles, setProfiles] = useState<Profiles[]>([]);
@@ -10,34 +13,32 @@ function App() {
   const [message, setMessage] = useState("");
 
   async function createProfile() {
-    if (!name || !password) {
-      setMessage("Please enter both name and password");
-      return;
-    }
-    setMessage("Plcreateind");
+    // const db = await Database.load("sqlite:password_manager.db");
+    // await db.execute(
+    //   'INSERT INTO `profiles` (`id`, `name`, `created_at`, `pass_hash`) VALUES (?, ?, ?, ?) -- binds: ["AxC6ucXvWOcwID1p4C", "nithin", 2025-11-19T09:48:08.658668, "$2b$12$CKHT.QI62jB/jn5Z6/2IbeXLw51hnSV79EMAv4.piLZXjzZK4k362"]'
+    // );
+    // if (!name || !password) {
+    //   setMessage("Please enter both name and password");
+    //   return;
+    // }
+    let x = await commands.createProfile("ntihin", "sdfdsaf");
 
-    const result = await commands.createProfile(name, password);
+    // const result = await commands.createProfile(name, password);
 
-    if (result.status === "ok") {
-      setMessage("Profile created successfully!");
-      setName("");
-      setPassword("");
-      // Refresh the list after creating
-      await loadProfiles();
-    } else {
-      setMessage(`Error: ${result.error}`);
-    }
+    setMessage(JSON.stringify(x));
+    setName("");
+    setPassword("");
+    // Refresh the list after creating
   }
 
   async function loadProfiles() {
     const result = await commands.listProfile();
+    // const db = await Database.load("sqlite:password_manager.db");
 
-    if (result.status === "ok") {
-      setProfiles(result.data);
-      setMessage(`Loaded ${result.data.length} profile(s)`);
-    } else {
-      setMessage(`Error loading profiles: ${result.error}`);
-    }
+    // let result = await db.select("select * from profiles;");
+
+    // setProfiles(result);
+    setMessage(`Loaded ${JSON.stringify(result)}  profile(s)`);
   }
 
   return (

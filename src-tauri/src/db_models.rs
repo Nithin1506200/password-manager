@@ -8,6 +8,8 @@ use diesel::prelude::*;
 use diesel::sqlite::Sqlite;
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use tauri::AppHandle;
+use tauri::Manager as _;
 use tauri::State;
 use tauri_plugin_sql::DbInstances;
 use tauri_plugin_sql::DbPool;
@@ -36,6 +38,22 @@ pub struct NewProfile {
     pub pass_hash: String,
 }
 
+fn path_mapper(mut app_path: std::path::PathBuf, connection_string: &str) -> String {
+    app_path.push(
+        connection_string
+            .split_once(':')
+            .expect("Couldn't parse the connection string for DB!")
+            .1,
+    );
+
+    format!(
+        "{}",
+        app_path
+            .to_str()
+            .expect("Problem creating fully qualified path to Database file!")
+    )
+}
+
 /// Helper function to work with the database pool
 /// Takes a closure that receives a reference to the DbPool
 pub async fn with_db_pool<F, R>(db_instances: &State<'_, DbInstances>, f: F) -> Result<R, ()>
@@ -50,8 +68,22 @@ impl Profiles {
     pub async fn create_new(
         name: &String,
         password: &String,
+        app: tauri::AppHandle,
         // db_instance: &State<'_, DbInstances>,
     ) -> Result<(), String> {
+        let app_path = app
+            .path()
+            .app_config_dir()
+            .expect("No App config path was found!");
+
+        let conn_url = &path_mapper(app_path, DB_NAME);
+
+        // Establish Diesel connection to the SQLite database
+        // Note: The database file is expected to be at "password_manager.db" based on tauri config
+
+        let mut conn = SqliteConnection::establish(conn_url)
+            .map_err(|e| format!("Error connecting to database: {} {}", conn_url, e))?;
+
         // Generate a new profile ID
         let profile_id = ProfileId::new().to_string();
 
@@ -70,13 +102,6 @@ impl Profiles {
             pass_hash: password_hash,
         };
 
-        // Establish Diesel connection to the SQLite database
-        // Note: The database file is expected to be at "password_manager.db" based on tauri config
-
-        let mut conn = SqliteConnection::establish(DB_NAME)
-            .map_err(|e| format!("Error connecting to database: {}", e))?;
-        println!(" connection fghh");
-
         // Insert the new profile
         let x = diesel::insert_into(profiles::table)
             .values(&new_profile)
@@ -87,10 +112,18 @@ impl Profiles {
         Ok(())
     }
 
-    pub async fn list() -> Result<Vec<Profiles>, String> {
+    pub async fn list(app: tauri::AppHandle) -> Result<Vec<Profiles>, String> {
+        let app_path = app
+            .path()
+            .app_config_dir()
+            .expect("No App config path was found!");
+
+        let conn_url = &path_mapper(app_path, DB_NAME);
+
         // Establish Diesel connection to the SQLite database
-        let mut conn = SqliteConnection::establish(DB_NAME)
-            .map_err(|e| format!("Error connecting to database: {}", e))?;
+        // Note: The database file is expected to be at "password_manager.db" based on tauri config
+        let mut conn = SqliteConnection::establish(conn_url)
+            .map_err(|e| format!("Error connecting to database: {} {}", conn_url, e))?;
 
         // Query all profiles from the database
         let results = profiles::table
