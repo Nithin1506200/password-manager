@@ -39,3 +39,4 @@ revert-all:
 # 🧾 5. List migrations
 list:
     @diesel migration list
+

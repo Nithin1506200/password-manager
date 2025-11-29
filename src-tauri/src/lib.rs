@@ -1,7 +1,9 @@
+use diesel::SqliteConnection;
+
 use crate::{
+    commands::{create_profile, list_profile},
     db_models::DB_NAME,
     migrations::get_migrations,
-    services::{create_profile, list_profile},
 };
 
 mod commands;
@@ -10,10 +12,9 @@ mod db_models;
 mod encrypt;
 pub mod migrations;
 pub mod schema;
-pub mod services;
-use specta_typescript::Typescript;
-use tauri::Builder;
-use tauri_specta::collect_commands;
+
+pub struct DbPool(SqliteConnection);
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 #[specta::specta]
@@ -40,7 +41,7 @@ pub fn run() {
 }
 #[test]
 fn specta() {
-    use crate::services::{create_profile, list_profile};
+    use crate::commands::{create_profile, list_profile};
     use serde::{Deserialize, Serialize};
     use specta_typescript::Typescript;
     use tauri_specta::{collect_commands, Builder};
@@ -53,7 +54,7 @@ fn specta() {
         .export(Typescript::default(), "../src/bindings.ts")
         .expect("Failed to export typescript bindings");
 
-    tauri::Builder::default()
+    let _ = tauri::Builder::default()
         // and finally tell Tauri how to invoke them
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
